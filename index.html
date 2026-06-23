@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+<meta name="theme-color" content="#0A0E1F" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>NotebookAI</title>
+<style>
+  :root{
+    --bg:#0A0E1F; --surface:#111827; --card:#1A2235; --border:#2D3748;
+    --violet:#7B5CF0; --violet-light:#9B7FF5; --violet-dim:#3D2D7A;
+    --emerald:#10B981; --emerald-dim:#064E3B;
+    --white:#F8FAFC; --muted:#94A3B8; --red:#EF4444;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--white);
+    overscroll-behavior:none;
+  }
+  #app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
+  .screen{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+  .hidden{display:none !important;}
+
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;
+  }
+  .topbar h1{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px;}
+  .sub{font-size:12px;color:var(--muted);font-weight:400;}
+  .icon-btn{
+    background:none;border:none;color:var(--white);font-size:19px;
+    width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;flex-shrink:0;
+  }
+  .icon-btn:active{background:var(--card);}
+  .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+  /* Setup */
+  .setup-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;overflow-y:auto;}
+  .setup-icon{font-size:40px;background:var(--violet-dim);width:78px;height:78px;border-radius:20px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;flex-shrink:0;}
+  .setup-wrap h2{font-size:24px;font-weight:800;margin-bottom:6px;}
+  .setup-wrap p{color:var(--muted);font-size:14px;margin-bottom:18px;line-height:1.5;}
+  .info-card{background:var(--surface);border-radius:14px;padding:16px;text-align:left;width:100%;max-width:420px;margin-bottom:16px;}
+  .info-card b{display:block;margin-bottom:8px;font-size:14px;}
+  .info-card ol{padding-left:18px;color:var(--muted);font-size:13px;line-height:1.7;}
+  .info-card code{background:var(--card);padding:1px 5px;border-radius:4px;font-size:12px;}
+  textarea, input[type=text], input[type=url]{
+    width:100%;max-width:420px;background:var(--surface);border:1px solid var(--border);
+    color:var(--white);border-radius:12px;padding:12px 14px;font-size:14px;font-family:inherit;
+  }
+  textarea{font-family:ui-monospace,monospace;resize:vertical;}
+  textarea:focus, input:focus{outline:none;border-color:var(--violet);}
+  .btn{
+    background:var(--violet);color:white;border:none;border-radius:12px;
+    padding:14px 20px;font-size:15px;font-weight:600;cursor:pointer;
+    width:100%;max-width:420px;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .btn:disabled{opacity:0.5;}
+  .btn.outline{background:transparent;border:1px solid var(--border);color:var(--white);}
+  .error-text{color:var(--red);font-size:13px;margin-top:8px;max-width:420px;text-align:left;width:100%;}
+
+  /* Home */
+  .fab{
+    position:fixed;bottom:22px;right:18px;background:var(--violet);color:white;
+    border:none;border-radius:30px;padding:14px 22px;font-size:15px;font-weight:600;
+    display:flex;align-items:center;gap:8px;box-shadow:0 6px 20px rgba(123,92,240,0.4);
+    cursor:pointer;z-index:50;
+  }
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:16px;padding-bottom:90px;}
+  .nb-card{background:var(--surface);border-radius:16px;padding:16px;cursor:pointer;position:relative;}
+  .nb-card .emoji{font-size:30px;display:block;margin-bottom:10px;}
+  .nb-card h3{font-size:14px;font-weight:600;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .nb-card p{font-size:12px;color:var(--muted);}
+  .nb-card .del{position:absolute;top:10px;right:10px;font-size:15px;color:var(--muted);padding:4px;}
+  .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center;}
+  .empty .em{font-size:52px;margin-bottom:14px;}
+  .empty h3{font-size:19px;font-weight:700;margin-bottom:8px;}
+  .empty p{color:var(--muted);font-size:14px;line-height:1.5;}
+
+  /* Notebook */
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .chip{display:flex;align-items:center;gap:5px;background:var(--card);border-radius:20px;padding:6px 10px;font-size:12px;white-space:nowrap;flex-shrink:0;}
+  .chip .x{color:var(--muted);font-size:13px;padding-left:2px;}
+  .tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .tab{flex:1;text-align:center;padding:12px;font-size:14px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;}
+  .tab.active{color:var(--violet-light);border-bottom-color:var(--violet);font-weight:700;}
+
+  .chat-area{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch;}
+  .msg{display:flex;gap:8px;max-width:88%;}
+  .msg.user{align-self:flex-end;flex-direction:row-reverse;}
+  .msg .avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;background:var(--emerald-dim);}
+  .msg.user .avatar{background:var(--violet-dim);}
+  .bubble{background:var(--card);border-radius:14px;padding:10px 13px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
+  .msg.user .bubble{background:var(--violet);color:white;}
+  .chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;color:var(--muted);font-size:13px;line-height:1.5;}
+  .chat-empty .em{font-size:38px;margin-bottom:10px;}
+  .typing{display:flex;gap:4px;padding:12px 13px;background:var(--card);border-radius:14px;width:fit-content;}
+  .typing span{width:6px;height:6px;border-radius:50%;background:var(--emerald);opacity:0.4;animation:blink 1.2s infinite;}
+  .typing span:nth-child(2){animation-delay:0.2s;} .typing span:nth-child(3){animation-delay:0.4s;}
+  @keyframes blink{0%,80%,100%{opacity:0.3;}40%{opacity:1;}}
+
+  .input-bar{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border);align-items:flex-end;flex-shrink:0;}
+  .input-bar textarea{flex:1;max-height:100px;border-radius:22px;font-family:inherit;font-size:14px;padding:11px 16px;}
+  .send-btn{width:42px;height:42px;border-radius:50%;background:var(--violet);border:none;color:white;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;cursor:pointer;}
+  .send-btn:disabled{opacity:0.4;}
+
+  .notes-list{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}
+  .note-card{background:var(--surface);border-radius:12px;padding:14px;position:relative;}
+  .note-card h4{font-size:14px;margin-bottom:4px;padding-right:20px;}
+  .note-card p{font-size:13px;color:var(--muted);white-space:pre-wrap;}
+  .note-card .del{position:absolute;top:10px;right:10px;color:var(--muted);font-size:14px;}
+
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center;z-index:100;}
+  .overlay.center{align-items:center;padding:20px;}
+  .sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px;max-height:80vh;overflow-y:auto;animation:slideup 0.2s ease;}
+  .overlay.center .sheet{border-radius:18px;max-height:85vh;}
+  @keyframes slideup{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .sheet h2{font-size:20px;font-weight:700;margin-bottom:4px;}
+  .sheet .desc{color:var(--muted);font-size:13px;margin-bottom:16px;line-height:1.4;}
+  .opt-row{display:flex;align-items:center;gap:14px;padding:10px 0;cursor:pointer;}
+  .opt-row .ic{width:44px;height:44px;border-radius:12px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0;}
+  .opt-row .tx{flex:1;}
+  .opt-row .tx b{display:block;font-size:14px;}
+  .opt-row .tx span{font-size:12px;color:var(--muted);}
+  .row-gap{display:flex;gap:10px;margin-top:14px;}
+  .row-gap .btn{margin-top:0;}
+  .emoji-pick{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;}
+  .emoji-pick span{width:38px;height:38px;border-radius:9px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:19px;cursor:pointer;}
+  .emoji-pick span.sel{background:var(--violet-dim);}
+
+  .tools-grid{padding:16px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;}
+  .tool-card{background:var(--surface);border-radius:14px;padding:15px;display:flex;align-items:center;gap:14px;cursor:pointer;}
+  .tool-card .em{font-size:24px;}
+  .tool-card .tx{flex:1;}
+  .tool-card .tx b{display:block;font-size:14px;}
+  .tool-card .tx span{font-size:12px;color:var(--muted);}
+  .gen-loading{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--muted);font-size:13px;}
+  .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--violet);border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .md-view{flex:1;overflow-y:auto;padding:20px;line-height:1.6;font-size:14px;}
+  .md-view h2{font-size:19px;font-weight:700;margin:16px 0 8px;}
+  .md-view h3{font-size:16px;font-weight:700;margin:14px 0 6px;}
+  .md-view li{margin-left:18px;margin-bottom:4px;list-style:disc;}
+  .md-view p{margin-bottom:6px;}
+
+  .fc-wrap{flex:1;display:flex;flex-direction:column;align-items:center;padding:20px;overflow:hidden;}
+  .fc-counter{color:var(--muted);font-size:13px;margin-bottom:14px;}
+  .fc-card{width:100%;max-width:380px;flex:1;border-radius:18px;background:var(--card);display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:17px;font-weight:600;cursor:pointer;overflow-y:auto;}
+  .fc-card.flipped{background:var(--violet-dim);}
+  .fc-hint{font-size:12px;color:var(--muted);margin:12px 0;flex-shrink:0;}
+  .fc-nav{display:flex;gap:14px;flex-shrink:0;}
+  .fc-nav .btn{width:auto;min-width:110px;}
+
+  .quiz-wrap{flex:1;display:flex;flex-direction:column;padding:20px;overflow-y:auto;}
+  .progress-bar{height:5px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:8px;}
+  .progress-bar div{height:100%;background:var(--violet);transition:width 0.3s;}
+  .q-text{font-size:16px;font-weight:600;margin:14px 0 16px;}
+  .q-opt{background:var(--card);border-radius:12px;padding:13px;margin-bottom:8px;font-size:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+  .q-opt.correct{background:var(--emerald-dim);}
+  .q-opt.wrong{background:#4A1D1D;}
+  .q-explain{background:var(--card);border-radius:12px;padding:13px;font-size:13px;color:var(--muted);margin-top:6px;}
+  .quiz-final{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+  .quiz-final .em{font-size:52px;}
+  .quiz-final .score{font-size:23px;font-weight:800;}
+
+  .snackbar{position:fixed;bottom:90px;left:16px;right:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 16px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:10px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,0.4);}
+  .snackbar button{background:none;border:none;color:var(--violet-light);font-weight:600;font-size:13px;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<div id="boot-error" class="hidden" style="position:fixed;inset:0;background:#0A0E1F;color:#F8FAFC;padding:24px;font-family:ui-monospace,monospace;font-size:13px;line-height:1.6;white-space:pre-wrap;z-index:9999;overflow-y:auto;">
+  <div style="color:#EF4444;font-weight:700;font-size:15px;margin-bottom:10px;">⚠️ The app hit an error while loading</div>
+  <div id="boot-error-msg"></div>
+  <div style="margin-top:18px;color:#94A3B8;font-family:-apple-system,sans-serif;">Copy this whole message and send it back — that's enough to diagnose it.</div>
+</div>
+
+<div id="app">
+
+  <div id="screen-setup" class="screen hidden">
+    <div class="setup-wrap">
+      <div class="setup-icon">🧠</div>
+      <h2>NotebookAI</h2>
+      <p>Your free AI research companion.<br>Powered by Google Gemini.</p>
+      <div class="info-card">
+        <b>Get your free config (~5 min, on this phone):</b>
+        <ol>
+          <li>Go to <code>console.firebase.google.com</code></li>
+          <li>Create a project (free Spark plan)</li>
+          <li>Left menu → Build → <b>AI Logic</b> → Get started → choose <b>Gemini Developer API</b></li>
+          <li>Project settings (gear icon) → scroll to "Your apps" → click the <code>&lt;/&gt;</code> Web icon → register an app</li>
+          <li>Copy the whole <code>firebaseConfig</code> object it shows you</li>
+        </ol>
+      </div>
+      <textarea id="config-input" rows="7" placeholder='Paste your firebaseConfig here, e.g.&#10;{ apiKey: "...", projectId: "...", ... }'></textarea>
+      <div id="setup-error" class="error-text hidden"></div>
+      <button class="btn" id="setup-save-btn">Get Started</button>
+      <p style="font-size:11px;color:var(--muted);margin-top:14px;max-width:420px;">Stored only on this device, never sent anywhere except directly to Google's API.</p>
+    </div>
+  </div>
+
+  <div id="screen-home" class="screen hidden">
+    <div class="topbar">
+      <h1>🧠 NotebookAI</h1>
+      <button class="icon-btn" id="home-settings-btn">⚙️</button>
+    </div>
+    <div class="scroll" id="home-body"></div>
+    <button class="fab" id="new-notebook-btn">+ New Notebook</button>
+  </div>
+
+  <div id="screen-notebook" class="screen hidden">
+    <div class="topbar">
+      <button class="icon-btn" id="nb-back-btn">←</button>
+      <div style="flex:1;text-align:center;overflow:hidden;min-width:0;">
+        <div id="nb-title" style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <div id="nb-subtitle" class="sub"></div>
+      </div>
+      <div style="display:flex;flex-shrink:0;">
+        <button class="icon-btn" id="nb-study-btn">🎓</button>
+        <button class="icon-btn" id="nb-add-btn">+</button>
+      </div>
+    </div>
+    <div id="nb-chips" class="chips hidden"></div>
+    <div class="tabs">
+      <div class="tab active" data-tab="chat">Chat</div>
+      <div class="tab" data-tab="notes">Notes</div>
+    </div>
+    <div id="tab-chat" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div id="chat-area" class="chat-area"></div>
+      <div class="input-bar">
+        <textarea id="chat-input" rows="1" placeholder="Ask about your sources…"></textarea>
+        <button class="send-btn" id="send-btn">➤</button>
+      </div>
+    </div>
+    <div id="tab-notes" class="hidden" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div id="notes-list" class="notes-list"></div>
+      <div style="padding:12px 16px;flex-shrink:0;">
+        <button class="btn" id="add-note-btn" style="margin-top:0;">+ Add Note</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-study" class="screen hidden">
+    <div class="topbar">
+      <button class="icon-btn" id="study-back-btn">←</button>
+      <h1 id="study-title" style="font-size:15px;">Study Tools</h1>
+      <div style="width:38px;flex-shrink:0;"></div>
+    </div>
+    <div id="study-body" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div>
+  </div>
+
+</div>
+
+<div id="modal-root"></div>
+<div id="snackbar-root"></div>
+
+<script type="module">
+/* ============== BOOT SAFETY NET ============== */
+// If literally anything throws anywhere on the page (including module load
+// failures that the rest of this script can't catch), show it instead of a
+// blank screen.
+function showBootError(msg){
+  const box = document.getElementById('boot-error');
+  const out = document.getElementById('boot-error-msg');
+  if(!box || !out) { console.error(msg); return; }
+  out.textContent += (out.textContent ? '\n\n' : '') + msg;
+  box.classList.remove('hidden');
+}
+window.addEventListener('error', (e)=>{
+  showBootError('Script error: ' + (e.message||'unknown') + (e.filename ? ('\nFile: '+e.filename+':'+e.lineno) : ''));
+});
+window.addEventListener('unhandledrejection', (e)=>{
+  const r = e.reason;
+  showBootError('Unhandled error: ' + (r && r.message ? r.message : String(r)) + (r && r.stack ? ('\n'+r.stack.split('\n').slice(0,3).join('\n')) : ''));
+});
+setTimeout(()=>{
+  const anyVisible = document.querySelector('.screen:not(.hidden)');
+  const bootErrorShown = !document.getElementById('boot-error').classList.contains('hidden');
+  if(!anyVisible && !bootErrorShown){
+    showBootError('Timed out after 5 seconds with nothing rendered, and no error was caught either.\nThis usually means a network/ad-blocker issue silently blocked a script from loading.\nTry: a different network (data instead of wifi, or vice versa), disabling any ad-blocker/VPN, or a different browser.');
+  }
+}, 5000);
+
+/* ============== LOAD FIREBASE (dynamic, so failures are catchable) ============== */
+let initializeApp, getAI, getGenerativeModel, GoogleAIBackend;
+async function loadFirebase(){
+  const FB_VERSION = '12.14.0';
+  try{
+    const appMod = await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-app.js`);
+    initializeApp = appMod.initializeApp;
+  }catch(e){
+    throw new Error('Could not load firebase-app.js from the CDN: ' + e.message);
+  }
+  try{
+    const aiMod = await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-ai.js`);
+    getAI = aiMod.getAI; getGenerativeModel = aiMod.getGenerativeModel; GoogleAIBackend = aiMod.GoogleAIBackend;
+  }catch(e){
+    throw new Error('Could not load firebase-ai.js from the CDN: ' + e.message);
+  }
+}
+
+/* ============== CONSTANTS ============== */
+const SYSTEM_PROMPT = `You are an AI Research Companion and Knowledge Assistant. Your expertise comes primarily
+from the user's uploaded materials rather than your own general knowledge.
+
+You act as: Research assistant, Study partner, Note organizer, Knowledge synthesizer,
+Project mentor, and Document analyst.
+
+Your highest priority is remaining faithful to the provided sources.
+
+PRIORITY SYSTEM:
+Priority 1: Uploaded Sources (treat as primary source of truth)
+Priority 2: User Instructions
+Priority 3: General Knowledge
+
+If an answer is not supported by uploaded materials, clearly state:
+"Not directly found in the provided sources." Then optionally provide general knowledge.
+
+SOURCE-GROUNDED ANSWERING — for every answer:
+1. Search uploaded materials first
+2. Locate relevant evidence
+3. Summarize accurately
+4. Cite source locations when available
+5. Distinguish between source-based facts and external knowledge
+
+OUTPUT FORMAT:
+**Direct Answer:** [your answer]
+**Evidence From Sources:** [specific evidence]
+**Key Takeaways:** [bullet points]
+**Related Questions:** [suggested follow-ups]
+**Confidence:** High / Medium / Low
+
+QUALITY RULES:
+- Always be factual and transparent
+- Show evidence for claims
+- Distinguish facts from assumptions
+- Admit uncertainty
+- Never fabricate citations or invent information
+
+Never pretend information exists in the uploaded material if it does not.`;
+
+const STUDY_PROMPTS = {
+  summary: { label:'Summary', emoji:'📋', desc:'Get the big picture in seconds', prompt:
+`Generate a comprehensive but concise summary of all the provided sources.
+Format as markdown:
+## Overview
+[2-3 sentence overview]
+
+## Key Points
+- [point]
+
+## Main Arguments
+[arguments]
+
+## Key Facts & Statistics
+[facts]` },
+  flashcards: { label:'Flashcards', emoji:'🗂️', desc:'Active recall practice', prompt:
+`Generate 15 high-quality flashcards from the sources. Return ONLY a valid JSON array, nothing else, no markdown fences:
+[{"q":"Question?","a":"Answer."}]
+Cover key concepts, definitions, and important facts.` },
+  quiz: { label:'Quiz', emoji:'✅', desc:'Test your understanding', prompt:
+`Generate 10 multiple choice questions from the sources. Return ONLY a valid JSON array, nothing else, no markdown fences:
+[{"q":"Question?","options":["A","B","C","D"],"correct":0,"explanation":"Why this is correct."}]
+Ensure answers test deep understanding, not just recall.` },
+  guide: { label:'Study Guide', emoji:'📘', desc:'Comprehensive review material', prompt:
+`Create a comprehensive study guide from the sources, as markdown with headers:
+## Learning Objectives
+## Core Concepts
+## Important Terms & Definitions
+## Key Relationships
+## Common Misconceptions
+## Review Questions` },
+  exam: { label:'Exam Predictions', emoji:'🎯', desc:'Likely questions, with model answers', prompt:
+`Based on the sources, predict 10 likely exam questions with model answers, as markdown:
+## Q1. [question]
+**Answer:** [detailed answer]
+(repeat for all 10)` }
+};
+
+/* ============== INDEXEDDB ============== */
+const DB_NAME='notebookai-db', DB_VERSION=1;
+let dbPromise=null;
+function openDB(){
+  if(dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e)=>{
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains('notebooks')) db.createObjectStore('notebooks',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('sources')){ const s=db.createObjectStore('sources',{keyPath:'id'}); s.createIndex('notebookId','notebookId'); }
+      if(!db.objectStoreNames.contains('messages')){ const s=db.createObjectStore('messages',{keyPath:'id'}); s.createIndex('notebookId','notebookId'); }
+      if(!db.objectStoreNames.contains('notes')){ const s=db.createObjectStore('notes',{keyPath:'id'}); s.createIndex('notebookId','notebookId'); }
+      if(!db.objectStoreNames.contains('settings')) db.createObjectStore('settings',{keyPath:'key'});
+    };
+    req.onsuccess=(e)=>resolve(e.target.result);
+    req.onerror=(e)=>reject(e.target.error);
+  });
+  return dbPromise;
+}
+function dbGet(store,key){ return openDB().then(db=>new Promise((res,rej)=>{ const r=db.transaction(store,'readonly').objectStore(store).get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); })); }
+function dbGetAllByIndex(store,index,value){ return openDB().then(db=>new Promise((res,rej)=>{ const r=db.transaction(store,'readonly').objectStore(store).index(index).getAll(value); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); })); }
+function dbGetAll(store){ return openDB().then(db=>new Promise((res,rej)=>{ const r=db.transaction(store,'readonly').objectStore(store).getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); })); }
+function dbPut(store,val){ return openDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); tx.objectStore(store).put(val); tx.oncomplete=()=>res(val); tx.onerror=()=>rej(tx.error); })); }
+function dbDelete(store,key){ return openDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); tx.objectStore(store).delete(key); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); })); }
+function dbDeleteByIndex(store,index,value){ return openDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(store,'readwrite'); const idx=tx.objectStore(store).index(index); const r=idx.openCursor(value); r.onsuccess=(e)=>{ const cur=e.target.result; if(cur){ cur.delete(); cur.continue(); } }; tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); })); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,9); }
+
+/* ============== FIREBASE / GEMINI ============== */
+let aiInstance=null;
+function initFirebase(config){
+  const app = initializeApp(config);
+  aiInstance = getAI(app, { backend: new GoogleAIBackend() });
+}
+function getModel(systemPrompt){
+  return getGenerativeModel(aiInstance, {
+    model: 'gemini-2.5-flash',
+    systemInstruction: { role:'system', parts:[{ text: systemPrompt }] },
+    generationConfig: { maxOutputTokens: 8192, temperature: 0.7 }
+  });
+}
+async function callGemini(contents, systemPrompt){
+  const model = getModel(systemPrompt);
+  const result = await model.generateContent(contents);
+  return result.response.text();
+}
+function parseFirebaseConfig(raw){
+  let text = raw.trim();
+  text = text.replace(/^(export\s+)?(const|let|var)\s+\w+\s*=\s*/,'');
+  text = text.replace(/;\s*$/,'');
+  const obj = new Function('"use strict"; return (' + text + ')')();
+  if(!obj || !obj.apiKey || !obj.projectId) throw new Error('Missing apiKey or projectId — paste the full config object.');
+  return obj;
+}
+
+/* ============== STATE ============== */
+const state = {
+  notebooks: [], currentNotebookId: null, currentNotebook: null,
+  sources: [], messages: [], notes: [], aiTyping: false,
+  studyType: null, studyResult: null, studyLoading: false
+};
+
+/* ============== UTIL ============== */
+function $(sel){ return document.querySelector(sel); }
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.getElementById('screen-'+name).classList.remove('hidden');
+}
+function esc(str){ const d=document.createElement('div'); d.textContent=str||''; return d.innerHTML; }
+function showSnackbar(msg, actionLabel, onAction){
+  const root = $('#snackbar-root');
+  root.innerHTML = `<div class="snackbar"><span>${esc(msg)}</span><button id="snackbar-action">${esc(actionLabel||'OK')}</button></div>`;
+  $('#snackbar-action').onclick = ()=>{ root.innerHTML=''; if(onAction) onAction(); };
+  setTimeout(()=>{ root.innerHTML=''; }, 6000);
+}
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function typeEmoji(type){ return {pdf:'📄',image:'🖼️',text:'📝',url:'🔗',paste:'📋'}[type] || '📄'; }
+function cleanJson(raw){ return raw.trim().replace(/^```json/,'').replace(/^```/,'').replace(/```$/,'').trim(); }
+
+/* ============== INIT / SETUP ============== */
+async function initApp(){
+  try{
+    await loadFirebase();
+  }catch(e){
+    showBootError(e.message);
+    return;
+  }
+  const cfg = await dbGet('settings','firebaseConfig');
+  if(cfg && cfg.value){
+    try{
+      initFirebase(cfg.value);
+      await loadHome();
+      return;
+    }catch(e){ console.error(e); }
+  }
+  showScreen('setup');
+}
+
+$('#setup-save-btn').addEventListener('click', async ()=>{
+  const raw = $('#config-input').value;
+  const errBox = $('#setup-error');
+  errBox.classList.add('hidden');
+  try{
+    const config = parseFirebaseConfig(raw);
+    initFirebase(config);
+    await dbPut('settings', { key:'firebaseConfig', value: config });
+    await loadHome();
+  }catch(e){
+    errBox.textContent = e.message || 'Could not parse that config.';
+    errBox.classList.remove('hidden');
+  }
+});
+
+/* ============== HOME ============== */
+const EMOJIS = ['📓','📚','🔬','💡','🎓','📊','🧬','🌍','💻','📰','🧠','🎯'];
+
+async function loadHome(){
+  state.notebooks = (await dbGetAll('notebooks')).sort((a,b)=>b.lastModified-a.lastModified);
+  renderHome();
+  showScreen('home');
+}
+
+function renderHome(){
+  const body = $('#home-body');
+  if(state.notebooks.length===0){
+    body.innerHTML = `<div class="empty"><div class="em">🧠</div><h3>Your research space</h3><p>Create a notebook, upload your documents, and let AI help you understand them.</p></div>`;
+    return;
+  }
+  body.innerHTML = `<div class="grid">${state.notebooks.map(nb=>`
+    <div class="nb-card" data-id="${nb.id}">
+      <span class="del" data-del="${nb.id}">✕</span>
+      <span class="emoji">${nb.emoji}</span>
+      <h3>${esc(nb.title)}</h3>
+      <p>${new Date(nb.lastModified).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</p>
+    </div>`).join('')}</div>`;
+  body.querySelectorAll('.nb-card').forEach(card=>{
+    card.addEventListener('click', (e)=>{ if(e.target.dataset.del) return; openNotebook(card.dataset.id); });
+  });
+  body.querySelectorAll('[data-del]').forEach(el=>{
+    el.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const id = el.dataset.del;
+      const nb = state.notebooks.find(n=>n.id===id);
+      if(confirm(`Delete "${nb.title}"? This removes all its sources and chat history.`)){
+        await dbDelete('notebooks', id);
+        await dbDeleteByIndex('sources','notebookId', id);
+        await dbDeleteByIndex('messages','notebookId', id);
+        await dbDeleteByIndex('notes','notebookId', id);
+        await loadHome();
+      }
+    });
+  });
+}
+
+$('#new-notebook-btn').addEventListener('click', ()=> openModal(createNotebookModal()));
+$('#home-settings-btn').addEventListener('click', async ()=>{
+  const cfg = await dbGet('settings','firebaseConfig');
+  $('#config-input').value = JSON.stringify(cfg?.value || {}, null, 2);
+  showScreen('setup');
+});
+
+function createNotebookModal(){
+  let selectedEmoji = '📓';
+  const html = `<div class="sheet">
+    <h2>New Notebook</h2>
+    <div class="emoji-pick" id="emoji-pick">${EMOJIS.map(e=>`<span data-e="${e}" class="${e===selectedEmoji?'sel':''}">${e}</span>`).join('')}</div>
+    <input type="text" id="nb-title-input" placeholder="Title" style="margin-top:10px;" />
+    <div class="row-gap">
+      <button class="btn outline" id="nb-cancel">Cancel</button>
+      <button class="btn" id="nb-create">Create</button>
+    </div>
+  </div>`;
+  return { html, mount(){
+    $('#emoji-pick').querySelectorAll('span').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        selectedEmoji = el.dataset.e;
+        $('#emoji-pick').querySelectorAll('span').forEach(s=>s.classList.remove('sel'));
+        el.classList.add('sel');
+      });
+    });
+    $('#nb-cancel').addEventListener('click', closeModal);
+    $('#nb-create').addEventListener('click', async ()=>{
+      const title = $('#nb-title-input').value.trim();
+      if(!title) return;
+      const nb = { id: uid(), title, emoji: selectedEmoji, createdAt: Date.now(), lastModified: Date.now() };
+      await dbPut('notebooks', nb);
+      closeModal();
+      await loadHome();
+      openNotebook(nb.id);
+    });
+  }};
+}
+
+/* ============== MODAL ============== */
+function openModal(modalObj, center){
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="overlay ${center?'center':''}" id="overlay">${modalObj.html}</div>`;
+  $('#overlay').addEventListener('click', (e)=>{ if(e.target.id==='overlay') closeModal(); });
+  if(modalObj.mount) modalObj.mount();
+}
+function closeModal(){ $('#modal-root').innerHTML=''; }
+
+/* ============== NOTEBOOK ============== */
+async function openNotebook(id){
+  state.currentNotebookId = id;
+  state.currentNotebook = await dbGet('notebooks', id);
+  await refreshNotebookData();
+  renderNotebookHeader();
+  renderChips();
+  renderChat();
+  renderNotes();
+  setActiveTab('chat');
+  showScreen('notebook');
+}
+
+async function refreshNotebookData(){
+  state.sources = await dbGetAllByIndex('sources','notebookId', state.currentNotebookId);
+  state.messages = (await dbGetAllByIndex('messages','notebookId', state.currentNotebookId)).sort((a,b)=>a.timestamp-b.timestamp);
+  state.notes = (await dbGetAllByIndex('notes','notebookId', state.currentNotebookId)).sort((a,b)=>b.createdAt-a.createdAt);
+}
+
+function renderNotebookHeader(){
+  $('#nb-title').textContent = state.currentNotebook.title;
+  $('#nb-subtitle').textContent = `${state.sources.length} source${state.sources.length!==1?'s':''}`;
+}
+
+function renderChips(){
+  const box = $('#nb-chips');
+  if(state.sources.length===0){ box.classList.add('hidden'); box.innerHTML=''; return; }
+  box.classList.remove('hidden');
+  box.innerHTML = state.sources.map(s=>`
+    <div class="chip"><span>${typeEmoji(s.type)}</span><span>${esc(s.name.slice(0,18))}</span><span class="x" data-del-src="${s.id}">✕</span></div>`).join('');
+  box.querySelectorAll('[data-del-src]').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      await dbDelete('sources', el.dataset.delSrc);
+      await refreshNotebookData();
+      renderChips(); renderNotebookHeader();
+    });
+  });
+}
+
+function setActiveTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
+  $('#tab-chat').classList.toggle('hidden', tab!=='chat');
+  $('#tab-notes').classList.toggle('hidden', tab!=='notes');
+}
+document.querySelectorAll('.tab').forEach(t=> t.addEventListener('click', ()=> setActiveTab(t.dataset.tab)));
+
+$('#nb-back-btn').addEventListener('click', ()=> loadHome());
+$('#nb-study-btn').addEventListener('click', ()=> openStudyTools());
+$('#nb-add-btn').addEventListener('click', ()=> openModal(uploadSheetModal()));
+
+/* ----- Chat ----- */
+function renderChat(){
+  const area = $('#chat-area');
+  if(state.messages.length===0 && !state.aiTyping){
+    area.innerHTML = `<div class="chat-empty"><div class="em">💬</div><div>Ask questions, get summaries, explore<br>connections across your sources.</div></div>`;
+    return;
+  }
+  area.innerHTML = state.messages.map(m=>`
+    <div class="msg ${m.role==='user'?'user':''}">
+      <div class="avatar">${m.role==='user'?'🙂':'🧠'}</div>
+      <div class="bubble">${esc(m.content)}</div>
+    </div>`).join('') + (state.aiTyping ? `<div class="msg"><div class="avatar">🧠</div><div class="typing"><span></span><span></span><span></span></div></div>` : '');
+  area.scrollTop = area.scrollHeight;
+}
+
+const chatInput = $('#chat-input');
+chatInput.addEventListener('input', ()=>{
+  chatInput.style.height='auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight,100)+'px';
+});
+$('#send-btn').addEventListener('click', sendChatMessage);
+chatInput.addEventListener('keydown', (e)=>{
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChatMessage(); }
+});
+
+async function sendChatMessage(){
+  const text = chatInput.value.trim();
+  if(!text || state.aiTyping) return;
+  chatInput.value=''; chatInput.style.height='auto';
+
+  const userMsg = { id: uid(), notebookId: state.currentNotebookId, role:'user', content:text, timestamp:Date.now() };
+  await dbPut('messages', userMsg);
+  state.messages.push(userMsg);
+  renderChat();
+
+  state.aiTyping = true; renderChat();
+  try{
+    const isFirstTurn = state.messages.length === 1;
+    const parts = [];
+    if(isFirstTurn && state.sources.length>0){
+      for(const s of state.sources){ const part = await buildSourcePart(s); if(part) parts.push(part); }
+      parts.push({ text: `I've attached ${state.sources.length} source(s) above. Please use them to answer my questions.\n\n${text}` });
+    } else {
+      parts.push({ text });
+    }
+    const history = state.messages.slice(0,-1).map(m=>({ role:m.role, parts:[{text:m.content}] }));
+    const contents = [...history, { role:'user', parts }];
+    const reply = await callGemini(contents, SYSTEM_PROMPT);
+    const aiMsg = { id: uid(), notebookId: state.currentNotebookId, role:'model', content:reply, timestamp:Date.now() };
+    await dbPut('messages', aiMsg);
+    state.messages.push(aiMsg);
+    state.currentNotebook.lastModified = Date.now();
+    await dbPut('notebooks', state.currentNotebook);
+  }catch(e){
+    console.error(e);
+    showSnackbar('AI error: ' + (e.message || 'something went wrong'));
+  }
+  state.aiTyping = false;
+  renderChat();
+}
+
+async function buildSourcePart(source){
+  if(source.textContent) return { text: `--- Source: ${source.name} ---\n${source.textContent}\n---` };
+  if(source.base64Data) return { inlineData: { mimeType: source.mimeType, data: source.base64Data } };
+  return null;
+}
+
+/* ----- Notes ----- */
+function renderNotes(){
+  const list = $('#notes-list');
+  if(state.notes.length===0){
+    list.innerHTML = `<div class="empty" style="padding:30px;"><div class="em" style="font-size:38px;">📝</div><p>No notes yet</p></div>`;
+    return;
+  }
+  list.innerHTML = state.notes.map(n=>`
+    <div class="note-card"><span class="del" data-del-note="${n.id}">✕</span><h4>${esc(n.title)}</h4><p>${esc(n.content)}</p></div>`).join('');
+  list.querySelectorAll('[data-del-note]').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      await dbDelete('notes', el.dataset.delNote);
+      await refreshNotebookData();
+      renderNotes();
+    });
+  });
+}
+
+$('#add-note-btn').addEventListener('click', ()=> openModal(addNoteModal(), true));
+function addNoteModal(){
+  const html = `<div class="sheet">
+    <h2>New Note</h2>
+    <input type="text" id="note-title" placeholder="Title" style="margin-bottom:10px;" />
+    <textarea id="note-content" rows="6" placeholder="Content"></textarea>
+    <div class="row-gap">
+      <button class="btn outline" id="note-cancel">Cancel</button>
+      <button class="btn" id="note-save">Save</button>
+    </div>
+  </div>`;
+  return { html, mount(){
+    $('#note-cancel').addEventListener('click', closeModal);
+    $('#note-save').addEventListener('click', async ()=>{
+      const title = $('#note-title').value.trim();
+      const content = $('#note-content').value.trim();
+      if(!title) return;
+      await dbPut('notes', { id: uid(), notebookId: state.currentNotebookId, title, content, createdAt: Date.now() });
+      closeModal();
+      await refreshNotebookData();
+      renderNotes();
+    });
+  }};
+}
+
+/* ----- Upload sheet ----- */
+function uploadSheetModal(){
+  const html = `<div class="sheet" id="upload-sheet">
+    <h2>Add a source</h2>
+    <div class="desc">PDFs, images, and text are read directly — no setup needed</div>
+    <div class="opt-row" data-pick="pdf"><div class="ic">📄</div><div class="tx"><b>PDF document</b><span>Papers, reports, ebooks</span></div></div>
+    <div class="opt-row" data-pick="image"><div class="ic">🖼️</div><div class="tx"><b>Image</b><span>Photos, screenshots, diagrams</span></div></div>
+    <div class="opt-row" data-pick="text"><div class="ic">📝</div><div class="tx"><b>Text file</b><span>.txt, .md, .csv, .json</span></div></div>
+    <div class="opt-row" id="opt-paste"><div class="ic">📋</div><div class="tx"><b>Paste text</b><span>Copy in an article or notes</span></div></div>
+    <div class="opt-row" id="opt-url"><div class="ic">🔗</div><div class="tx"><b>Website URL</b><span>Best-effort — many sites block this</span></div></div>
+    <input type="file" id="file-input" class="hidden" />
+  </div>`;
+  return { html, mount(){
+    const fileInput = $('#file-input');
+    const accepts = { pdf:'application/pdf', image:'image/*', text:'.txt,.md,.csv,.json,text/plain' };
+    document.querySelectorAll('#upload-sheet [data-pick]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        fileInput.accept = accepts[el.dataset.pick];
+        fileInput.dataset.kind = el.dataset.pick;
+        fileInput.click();
+      });
+    });
+    fileInput.addEventListener('change', async ()=>{
+      const file = fileInput.files[0];
+      if(!file) return;
+      const kind = fileInput.dataset.kind;
+      closeModal();
+      await handleFileUpload(file, kind);
+    });
+    $('#opt-paste').addEventListener('click', ()=>{ closeModal(); openModal(pasteTextModal(), true); });
+    $('#opt-url').addEventListener('click', ()=>{ closeModal(); openModal(urlModal(), true); });
+  }};
+}
+
+async function handleFileUpload(file, kind){
+  showSnackbar('Adding source…');
+  try{
+    const source = { id: uid(), notebookId: state.currentNotebookId, name: file.name, type: kind, mimeType: file.type || 'application/octet-stream', createdAt: Date.now() };
+    if(kind === 'text'){
+      source.textContent = (await file.text()).slice(0, 50000);
+    } else {
+      source.base64Data = await fileToBase64(file);
+    }
+    await dbPut('sources', source);
+    await refreshNotebookData();
+    renderChips(); renderNotebookHeader();
+    $('#snackbar-root').innerHTML='';
+    if(file.size > 18*1024*1024){ showSnackbar('That was a large file — it may be slow or hit free-tier limits.'); }
+  }catch(e){
+    showSnackbar('Could not add file: ' + e.message);
+  }
+}
+
+function pasteTextModal(){
+  const html = `<div class="sheet">
+    <h2>Paste text</h2>
+    <input type="text" id="paste-name" placeholder="Source name (e.g. Lecture notes)" style="margin-bottom:10px;" />
+    <textarea id="paste-content" rows="8" placeholder="Paste your text here…"></textarea>
+    <div class="row-gap">
+      <button class="btn outline" id="paste-cancel">Cancel</button>
+      <button class="btn" id="paste-save">Add</button>
+    </div>
+  </div>`;
+  return { html, mount(){
+    $('#paste-cancel').addEventListener('click', closeModal);
+    $('#paste-save').addEventListener('click', async ()=>{
+      const content = $('#paste-content').value.trim();
+      if(!content) return;
+      const name = $('#paste-name').value.trim() || 'Pasted text';
+      await dbPut('sources', { id: uid(), notebookId: state.currentNotebookId, name, type:'paste', mimeType:'text/plain', textContent: content.slice(0,50000), createdAt: Date.now() });
+      closeModal();
+      await refreshNotebookData();
+      renderChips(); renderNotebookHeader();
+    });
+  }};
+}
+
+function urlModal(){
+  const html = `<div class="sheet">
+    <h2>Website URL</h2>
+    <div class="desc">Many sites block this for browser security (CORS). If it fails, copy the article text and use "Paste text" instead.</div>
+    <input type="url" id="url-input" placeholder="https://example.com/article" />
+    <div id="url-error" class="error-text hidden"></div>
+    <div class="row-gap">
+      <button class="btn outline" id="url-cancel">Cancel</button>
+      <button class="btn" id="url-fetch">Fetch</button>
+    </div>
+  </div>`;
+  return { html, mount(){
+    $('#url-cancel').addEventListener('click', closeModal);
+    $('#url-fetch').addEventListener('click', async ()=>{
+      const url = $('#url-input').value.trim();
+      if(!url) return;
+      const btn = $('#url-fetch'); btn.disabled=true; btn.textContent='Fetching…';
+      try{
+        const res = await fetch(url);
+        if(!res.ok) throw new Error('Server returned '+res.status);
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        doc.querySelectorAll('script,style,nav,footer,header,noscript,iframe').forEach(el=>el.remove());
+        let text = (doc.querySelector('article')?.textContent || doc.querySelector('main')?.textContent || doc.body.textContent || '');
+        text = text.replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+        if(!text) throw new Error('No readable text found');
+        await dbPut('sources', { id: uid(), notebookId: state.currentNotebookId, name: doc.title || url, type:'url', mimeType:'text/plain', textContent: text.slice(0,50000), createdAt: Date.now() });
+        closeModal();
+        await refreshNotebookData();
+        renderChips(); renderNotebookHeader();
+      }catch(e){
+        $('#url-error').textContent = 'Could not load this page (likely blocked by the site\'s CORS policy). Try "Paste text" instead.';
+        $('#url-error').classList.remove('hidden');
+        btn.disabled=false; btn.textContent='Fetch';
+      }
+    });
+  }};
+}
+
+/* ============== STUDY TOOLS ============== */
+function openStudyTools(){
+  state.studyResult=null; state.studyType=null; state.studyLoading=false;
+  renderStudyTools();
+  showScreen('study');
+}
+$('#study-back-btn').addEventListener('click', ()=>{
+  if(state.studyType){ state.studyType=null; state.studyResult=null; renderStudyTools(); }
+  else { openNotebook(state.currentNotebookId); }
+});
+
+function renderStudyTools(){
+  $('#study-title').textContent = state.studyType ? STUDY_PROMPTS[state.studyType].label : 'Study Tools';
+  const body = $('#study-body');
+  if(state.studyLoading){
+    body.innerHTML = `<div class="gen-loading"><div class="spinner"></div><div>Generating ${esc(STUDY_PROMPTS[state.studyType].label.toLowerCase())}…</div></div>`;
+    return;
+  }
+  if(state.studyResult){ renderStudyResult(body); return; }
+  body.innerHTML = `<div class="tools-grid">${Object.entries(STUDY_PROMPTS).map(([key,t])=>`
+    <div class="tool-card" data-tool="${key}"><span class="em">${t.emoji}</span><div class="tx"><b>${t.label}</b><span>${t.desc}</span></div></div>`).join('')}</div>`;
+  body.querySelectorAll('[data-tool]').forEach(el=> el.addEventListener('click', ()=> generateStudyTool(el.dataset.tool)));
+}
+
+async function generateStudyTool(key){
+  if(state.sources.length===0){ showSnackbar('Add a source to this notebook first.'); return; }
+  state.studyType=key; state.studyLoading=true; state.studyResult=null;
+  renderStudyTools();
+  try{
+    const parts=[];
+    for(const s of state.sources){ const p=await buildSourcePart(s); if(p) parts.push(p); }
+    parts.push({ text: STUDY_PROMPTS[key].prompt });
+    const result = await callGemini([{ role:'user', parts }], 'You are an expert study tool generator. Be precise, educational, and thorough.');
+    state.studyResult = result;
+  }catch(e){
+    showSnackbar('Generation failed: ' + e.message);
+    state.studyType=null;
+  }
+  state.studyLoading=false;
+  renderStudyTools();
+}
+
+function renderStudyResult(body){
+  if(state.studyType==='flashcards'){ renderFlashcards(body); return; }
+  if(state.studyType==='quiz'){ renderQuiz(body); return; }
+  renderMarkdown(body, state.studyResult);
+}
+
+function renderMarkdown(body, text){
+  const lines = text.split('\n');
+  let html='';
+  for(const line of lines){
+    const t=line.trim();
+    if(t.startsWith('## ')) html += `<h2>${esc(t.slice(3))}</h2>`;
+    else if(t.startsWith('# ')) html += `<h2>${esc(t.slice(2))}</h2>`;
+    else if(/^\*\*.*\*\*$/.test(t)) html += `<h3>${esc(t.replace(/\*\*/g,''))}</h3>`;
+    else if(t.startsWith('- ') || t.startsWith('* ')) html += `<li>${esc(t.slice(2))}</li>`;
+    else if(t==='') html += '<br>';
+    else html += `<p>${esc(t.replace(/\*\*/g,''))}</p>`;
+  }
+  body.innerHTML = `<div class="md-view">${html}</div>`;
+}
+
+function renderFlashcards(body){
+  let cards;
+  try{ cards = JSON.parse(cleanJson(state.studyResult)); }catch(e){ renderMarkdown(body, state.studyResult); return; }
+  if(!Array.isArray(cards) || cards.length===0){ renderMarkdown(body, state.studyResult); return; }
+  let idx=0, flipped=false;
+  function draw(){
+    body.innerHTML = `<div class="fc-wrap">
+      <div class="fc-counter">Card ${idx+1} of ${cards.length}</div>
+      <div class="fc-card ${flipped?'flipped':''}" id="fc-card">${esc(flipped?cards[idx].a:cards[idx].q)}</div>
+      <div class="fc-hint">Tap card to flip</div>
+      <div class="fc-nav">
+        <button class="btn outline" id="fc-prev" ${idx===0?'disabled':''}>← Prev</button>
+        <button class="btn" id="fc-next" ${idx===cards.length-1?'disabled':''}>Next →</button>
+      </div></div>`;
+    $('#fc-card').addEventListener('click', ()=>{ flipped=!flipped; draw(); });
+    $('#fc-prev').addEventListener('click', ()=>{ if(idx>0){idx--; flipped=false; draw();} });
+    $('#fc-next').addEventListener('click', ()=>{ if(idx<cards.length-1){idx++; flipped=false; draw();} });
+  }
+  draw();
+}
+
+function renderQuiz(body){
+  let qs;
+  try{ qs = JSON.parse(cleanJson(state.studyResult)); }catch(e){ renderMarkdown(body, state.studyResult); return; }
+  if(!Array.isArray(qs) || qs.length===0){ renderMarkdown(body, state.studyResult); return; }
+  let idx=0, score=0, selected=null, finished=false;
+  function draw(){
+    if(finished){
+      body.innerHTML = `<div class="quiz-final"><div class="em">🎉</div><div class="score">${score} / ${qs.length} correct</div><button class="btn" id="quiz-restart" style="max-width:200px;">Try Again</button></div>`;
+      $('#quiz-restart').addEventListener('click', ()=>{ idx=0; score=0; selected=null; finished=false; draw(); });
+      return;
+    }
+    const q = qs[idx];
+    body.innerHTML = `<div class="quiz-wrap">
+      <div class="progress-bar"><div style="width:${((idx+1)/qs.length)*100}%"></div></div>
+      <div style="font-size:12px;color:var(--muted);">Question ${idx+1} of ${qs.length}</div>
+      <div class="q-text">${esc(q.q)}</div>
+      ${q.options.map((opt,i)=>`<div class="q-opt ${selected!=null && i===q.correct?'correct':''} ${selected===i && i!==q.correct?'wrong':''}" data-i="${i}">${esc(opt)}<span>${selected!=null && i===q.correct?'✅':(selected===i && i!==q.correct?'❌':'')}</span></div>`).join('')}
+      ${selected!=null ? `<div class="q-explain">${esc(q.explanation||'')}</div>` : ''}
+      <button class="btn" id="quiz-next" ${selected==null?'disabled':''} style="margin-top:16px;">${idx<qs.length-1?'Next Question':'Finish'}</button>
+    </div>`;
+    body.querySelectorAll('.q-opt').forEach(el=>{
+      el.addEventListener('click', ()=>{ if(selected!=null) return; selected=Number(el.dataset.i); draw(); });
+    });
+    const nextBtn = $('#quiz-next');
+    nextBtn.addEventListener('click', ()=>{
+      if(selected===q.correct) score++;
+      if(idx<qs.length-1){ idx++; selected=null; } else { finished=true; }
+      draw();
+    });
+  }
+  draw();
+}
+
+/* ============== INIT ============== */
+initApp();
+</script>
+</body>
+</html>
